@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.SortDefault;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.HtmlUtils;
 import run.halo.app.cache.lock.CacheLock;
 import run.halo.app.model.dto.BaseCommentDTO;
 import run.halo.app.model.dto.post.BasePostSimpleDTO;
@@ -21,15 +22,16 @@ import run.halo.app.service.OptionService;
 import run.halo.app.service.PostCommentService;
 import run.halo.app.service.PostService;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.springframework.data.domain.Sort.Direction.DESC;
 
 /**
- * Portal post controller.
+ * Content post controller.
  *
  * @author johnniang
- * @date 4/2/19
+ * @date 2019-04-02
  */
 @RestController("ApiContentPostController")
 @RequestMapping("/api/content/posts")
@@ -130,6 +132,10 @@ public class PostController {
     @ApiOperation("Comments a post")
     @CacheLock(autoDelete = false, traceRequest = true)
     public BaseCommentDTO comment(@RequestBody PostCommentParam postCommentParam) {
+        postCommentService.validateCommentBlackListStatus();
+
+        // Escape content
+        postCommentParam.setContent(HtmlUtils.htmlEscape(postCommentParam.getContent(), StandardCharsets.UTF_8.displayName()));
         return postCommentService.convertTo(postCommentService.createBy(postCommentParam));
     }
 
