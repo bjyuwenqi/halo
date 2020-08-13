@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.info.BuildProperties;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,11 +14,10 @@ import org.springframework.web.client.RestTemplate;
 import run.halo.app.cache.AbstractStringCacheStore;
 import run.halo.app.cache.InMemoryCacheStore;
 import run.halo.app.cache.LevelCacheStore;
+import run.halo.app.cache.RedisCacheStore;
 import run.halo.app.config.properties.HaloProperties;
-import run.halo.app.model.support.HaloConst;
 import run.halo.app.utils.HttpClientUtils;
 
-import javax.annotation.PostConstruct;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -37,9 +35,6 @@ public class HaloConfiguration {
     @Autowired
     HaloProperties haloProperties;
 
-    @Autowired
-    BuildProperties buildProperties;
-
     @Bean
     public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
         builder.failOnEmptyBeans(false);
@@ -48,10 +43,10 @@ public class HaloConfiguration {
 
     @Bean
     public RestTemplate httpsRestTemplate(RestTemplateBuilder builder)
-        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+            throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
         RestTemplate httpsRestTemplate = builder.build();
         httpsRestTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory(HttpClientUtils.createHttpsClient(
-            (int) haloProperties.getDownloadTimeout().toMillis())));
+                (int) haloProperties.getDownloadTimeout().toMillis())));
         return httpsRestTemplate;
     }
 
@@ -63,7 +58,9 @@ public class HaloConfiguration {
             case "level":
                 stringCacheStore = new LevelCacheStore();
                 break;
-
+            case "redis":
+                stringCacheStore = new RedisCacheStore(this.haloProperties);
+                break;
             case "memory":
             default:
                 //memory or default
@@ -71,13 +68,8 @@ public class HaloConfiguration {
                 break;
 
         }
-        log.info("halo cache store load impl : [{}]", stringCacheStore.getClass());
+        log.info("Halo cache store load impl : [{}]", stringCacheStore.getClass());
         return stringCacheStore;
 
-    }
-
-    @PostConstruct
-    public void init() {
-        HaloConst.HALO_VERSION = buildProperties.getVersion();
     }
 }
